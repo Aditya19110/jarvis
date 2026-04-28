@@ -126,8 +126,9 @@ Temporary Items
 # Project Specific
 data/
 !data/.gitkeep
-jarvis/data/
-!jarvis/data/.gitkeep
+models/
+*.wav
+*.webm
 *.log
 *.sqlite
 *.sqlite3

@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -9,14 +10,27 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 print(f"Using device: {device}")
 
 # -----------------------------
-# 2. Load model from HuggingFace
+# 2. Load model from HuggingFace / Local Path
 # -----------------------------
 model_name = "distilbert-base-uncased"
+local_model_path = f"./models/{model_name}"
 
 start = time.time()
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
+if not os.path.exists(local_model_path):
+    print(f"Downloading model and saving locally to {local_model_path}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    
+    # Save the model and tokenizer to our local project folder
+    tokenizer.save_pretrained(local_model_path)
+    model.save_pretrained(local_model_path)
+else:
+    print(f"Loading model from local directory: {local_model_path}")
+
+# Load directly from the local path
+tokenizer = AutoTokenizer.from_pretrained(local_model_path)
+model = AutoModelForSequenceClassification.from_pretrained(local_model_path)
 
 model.to(device)
 

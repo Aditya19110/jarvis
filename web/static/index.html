@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JARVIS — Just A Rather Very Intelligent System</title>
+  <meta name="description" content="A fully local, offline AI assistant powered by Phi-3-mini running on Apple Silicon." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+  <!-- ── Ambient Background ── -->
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ── Grid overlay ── -->
+  <div class="grid-overlay" aria-hidden="true"></div>
+
+  <!-- ── Scanline effect ── -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div class="app-shell">
+
+    <!-- ════ HEADER ════ -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-ring" aria-hidden="true">
+          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="36" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3" class="ring-outer"/>
+            <circle cx="40" cy="40" r="26" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+            <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.9" class="ring-core"/>
+            <text x="40" y="45" text-anchor="middle" fill="white" font-size="10" font-family="Orbitron" font-weight="700">J</text>
+          </svg>
+        </div>
+        <div class="header-title">
+          <h1>JARVIS</h1>
+          <p class="subtitle">Just A Rather Very Intelligent System</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-badge" id="status-badge">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="status-text" id="status-text">Initializing…</span>
+        </div>
+        <button class="icon-btn" id="reset-btn" title="Clear conversation" aria-label="Clear conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ════ MAIN CONTENT ════ -->
+    <main class="main-content">
+
+      <!-- ── Left Panel: System Stats ── -->
+      <aside class="side-panel left-panel" aria-label="System statistics">
+        <div class="panel-header">
+          <span class="panel-icon">⚡</span>
+          <span>SYSTEM STATUS</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card" id="stat-cpu">
+            <div class="stat-label">CPU</div>
+            <div class="stat-value" id="cpu-value">–%</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="cpu-bar"></div></div>
+          </div>
+          <div class="stat-card" id="stat-ram">
+            <div class="stat-label">RAM</div>
+            <div class="stat-value" id="ram-value">– GB</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="ram-bar"></div></div>
+          </div>
+          <div class="stat-card" id="stat-disk">
+            <div class="stat-label">DISK</div>
+            <div class="stat-value" id="disk-value">–%</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="disk-bar"></div></div>
+          </div>
+          <div class="stat-card" id="stat-battery">
+            <div class="stat-label">BATTERY</div>
+            <div class="stat-value" id="battery-value">–%</div>
+            <div class="stat-bar"><div class="stat-bar-fill" id="battery-bar"></div></div>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <div class="panel-header">
+          <span class="panel-icon">🧠</span>
+          <span>MODEL</span>
+        </div>
+        <div class="model-info">
+          <div class="model-name">Phi-3-mini-4bit</div>
+          <div class="model-detail">MLX · Apple Silicon</div>
+          <div class="model-detail">~2GB RAM · Local</div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <div class="panel-header">
+          <span class="panel-icon">📡</span>
+          <span>UPTIME</span>
+        </div>
+        <div class="uptime-display" id="uptime-display">00:00:00</div>
+      </aside>
+
+      <!-- ── Center: Chat ── -->
+      <section class="chat-section" aria-label="Chat with JARVIS">
+        <!-- Waveform visualizer -->
+        <div class="waveform-container" id="waveform-container" aria-hidden="true">
+          <div class="waveform" id="waveform">
+            <div class="waveform-ring ring-1"></div>
+            <div class="waveform-ring ring-2"></div>
+            <div class="waveform-ring ring-3"></div>
+            <div class="waveform-bars" id="waveform-bars"></div>
+          </div>
+          <div class="waveform-label" id="waveform-label">STANDBY</div>
+        </div>
+
+        <!-- Chat messages -->
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+          <div class="welcome-msg">
+            <div class="welcome-icon">🤖</div>
+            <h2>Good to see you, Sir.</h2>
+            <p>I am JARVIS, your personal AI assistant. Running fully offline on your Apple Silicon Mac. How may I assist you today?</p>
+          </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="chat-input-area">
+          <div class="input-row">
+            <div class="input-wrapper">
+              <textarea
+                id="user-input"
+                placeholder="Ask JARVIS anything…"
+                rows="1"
+                aria-label="Type your message"
+              ></textarea>
+            </div>
+            <button class="voice-btn" id="voice-btn" title="Voice input" aria-label="Start voice recording">
+              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <button class="send-btn" id="send-btn" title="Send message" aria-label="Send message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="input-hint" id="input-hint">Press Enter to send · Shift+Enter for newline · or click 🎤 to speak</div>
+        </div>
+      </section>
+
+      <!-- ── Right Panel: Memory + History ── -->
+      <aside class="side-panel right-panel" aria-label="Memory and history">
+
+        <!-- Conversation stats -->
+        <div class="panel-header">
+          <span class="panel-icon">💬</span>
+          <span>CONVERSATION</span>
+        </div>
+        <div class="conv-stats">
+          <div class="conv-stat">
+            <span class="conv-stat-label">Messages</span>
+            <span class="conv-stat-value" id="msg-count">0</span>
+          </div>
+          <div class="conv-stat">
+            <span class="conv-stat-label">Sessions</span>
+            <span class="conv-stat-value" id="session-count">–</span>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <!-- Memory panel -->
+        <div class="panel-header">
+          <span class="panel-icon">🧠</span>
+          <span>JARVIS MEMORY</span>
+          <button class="panel-refresh-btn" id="refresh-memory-btn" title="Refresh memory" aria-label="Refresh memory">↻</button>
+        </div>
+        <div class="memory-panel" id="memory-panel">
+          <div class="memory-loading">Loading memory…</div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <!-- Past sessions -->
+        <div class="panel-header">
+          <span class="panel-icon">📚</span>
+          <span>PAST SESSIONS</span>
+        </div>
+        <div class="sessions-list" id="sessions-list">
+          <div class="memory-loading">Loading sessions…</div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <!-- Quick prompts -->
+        <div class="panel-header">
+          <span class="panel-icon">🎯</span>
+          <span>QUICK PROMPTS</span>
+        </div>
+        <div class="quick-prompts">
+          <button class="quick-btn" data-prompt="What's my system status?">System Status</button>
+          <button class="quick-btn" data-prompt="What do you remember about me?">My Memory</button>
+          <button class="quick-btn" data-prompt="Write a short Python function to reverse a string.">Python Code</button>
+          <button class="quick-btn" data-prompt="Tell me a fun tech fact.">Tech Fact</button>
+          <button class="quick-btn" data-prompt="What can you help me with?">Your Skills</button>
+          <button class="quick-btn" data-prompt="Tell me a joke, JARVIS.">Make me laugh</button>
+        </div>
+      </aside>
+
+    </main>
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

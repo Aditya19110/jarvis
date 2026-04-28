@@ -3,7 +3,6 @@ skills/web_search.py — DuckDuckGo search skill (no API key needed)
 """
 from __future__ import annotations
 
-
 def search_web(query: str, max_results: int = 4) -> list[dict]:
     """
     Search DuckDuckGo and return top results.
@@ -17,12 +16,11 @@ def search_web(query: str, max_results: int = 4) -> list[dict]:
                 results.append({
                     "title": r.get("title", ""),
                     "href": r.get("href", ""),
-                    "body": r.get("body", "")[:300],  # Trim to 300 chars
+                    "body": r.get("body", "")[:300], 
                 })
         return results
     except Exception as e:
         return [{"title": "Search error", "href": "", "body": str(e)}]
-
 
 def format_search_results(results: list[dict]) -> str:
     """Format results into a readable string."""

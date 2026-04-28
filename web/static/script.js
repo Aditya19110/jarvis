@@ -1,52 +1,32 @@
-/* ─── script.js — JARVIS Frontend Logic ─────────────────────
-   Handles: SSE streaming chat, voice recording via MediaRecorder,
-   system stats polling, uptime, waveform animation, quick prompts.
-─────────────────────────────────────────────────────────────── */
-
 'use strict';
-
-// ─── Configure marked (v12 compatible) ──────────────────────
-// In marked v9+, the 'highlight' option was REMOVED from setOptions.
-// Syntax highlighting must be done via a custom renderer instead.
-
 marked.use({
-  breaks: true,   // \n → <br>
-  gfm: true,      // GitHub Flavored Markdown tables, strikethrough, etc.
+  breaks: true,
+  gfm: true,
   renderer: {
-    // Override code block rendering to add language label + hljs highlighting
     code({ text, lang }) {
       const rawText = typeof text === 'string' ? text : String(text ?? '');
       const rawLang = typeof lang === 'string' ? lang.trim() : '';
-      const validLang = rawLang && typeof hljs !== 'undefined' && hljs.getLanguage(rawLang) ? rawLang : '';
-      const label = (rawLang || 'code').toUpperCase();
-      
-      let highlighted;
+      const validLang = rawLang && typeof hljs !== 'undefined' && hljs.getLanguage(rawLang) ? rawLang : 'plaintext';
+
+      let highlighted = rawText;
       try {
-        if (typeof hljs !== 'undefined' && rawText.length > 0) {
-          highlighted = validLang
-            ? hljs.highlight(rawText, { language: validLang }).value
-            : hljs.highlightAuto(rawText).value;
-        } else {
-          throw new Error('hljs skip');
+        if (typeof hljs !== 'undefined' && rawText.trim().length > 0) {
+          highlighted = hljs.highlight(rawText, { language: validLang }).value;
         }
       } catch (_) {
-        highlighted = rawText
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+        highlighted = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       }
 
-      // ChatGPT-style structure with Copy button
       return `
         <div class="code-container">
           <div class="code-header">
-            <span class="code-lang">${label}</span>
+            <span class="code-lang">${(rawLang || 'code').toUpperCase()}</span>
             <button class="copy-btn" onclick="copyCode(this)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               <span>Copy code</span>
             </button>
           </div>
-          <pre><code class="hljs">${highlighted || '/* (no code generated) */'}</code></pre>
+          <pre><code class="hljs ${validLang}">${highlighted || '/* (no code generated) */'}</code></pre>
         </div>`;
     },
   },
@@ -57,7 +37,6 @@ function renderMarkdown(text) {
   try {
     return marked.parse(String(text));
   } catch (e) {
-    // Fallback: escape HTML and show as plain text
     return '<p>' + String(text)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -66,40 +45,35 @@ function renderMarkdown(text) {
   }
 }
 
-// ─── DOM refs ────────────────────────────────────────────────
-const chatMessages  = document.getElementById('chat-messages');
-const userInput     = document.getElementById('user-input');
-const sendBtn       = document.getElementById('send-btn');
-const voiceBtn      = document.getElementById('voice-btn');
-const resetBtn      = document.getElementById('reset-btn');
-const statusDot     = document.getElementById('status-dot');
-const statusText    = document.getElementById('status-text');
-const msgCount      = document.getElementById('msg-count');
+const chatMessages = document.getElementById('chat-messages');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const voiceBtn = document.getElementById('voice-btn');
+const resetBtn = document.getElementById('reset-btn');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const msgCount = document.getElementById('msg-count');
 const uptimeDisplay = document.getElementById('uptime-display');
-const waveformBars  = document.getElementById('waveform-bars');
+const waveformBars = document.getElementById('waveform-bars');
 const waveformLabel = document.getElementById('waveform-label');
-const inputHint     = document.getElementById('input-hint');
+const inputHint = document.getElementById('input-hint');
 
-// ─── State ───────────────────────────────────────────────────
-let isRecording   = false;
-let isStreaming   = false;
+let isRecording = false;
+let isStreaming = false;
 let mediaRecorder = null;
-let audioChunks   = [];
-let messageCount  = 0;
-let startTime     = Date.now();
+let audioChunks = [];
+let messageCount = 0;
+let startTime = Date.now();
+let abortController = null;
 
-// ─── Init ────────────────────────────────────────────────────
 (async function init() {
   buildWaveformBars();
   startUptimeClock();
   pollStatus();
   setInterval(pollStatus, 6000);
   loadHistory();
-  // Load memory + sessions panels (waits briefly for server to be ready)
-  setTimeout(() => { loadMemoryPanel(); loadSessionsPanel(); }, 1200);
 })();
 
-// ─── Waveform bars setup ─────────────────────────────────────
 function buildWaveformBars() {
   waveformBars.innerHTML = '';
   for (let i = 0; i < 5; i++) {
@@ -110,7 +84,6 @@ function buildWaveformBars() {
 }
 
 function setWaveformState(state) {
-  // state: 'idle' | 'thinking' | 'speaking' | 'recording'
   waveformBars.classList.remove('active');
   const labels = { idle: 'STANDBY', thinking: 'PROCESSING', speaking: 'RESPONDING', recording: 'RECORDING' };
   waveformLabel.textContent = labels[state] || 'STANDBY';
@@ -123,7 +96,6 @@ function setWaveformState(state) {
   }
 }
 
-// ─── Uptime clock ────────────────────────────────────────────
 function startUptimeClock() {
   setInterval(() => {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -134,23 +106,20 @@ function startUptimeClock() {
   }, 1000);
 }
 
-// ─── Status poll ─────────────────────────────────────────────
 async function pollStatus() {
   try {
-    const res  = await fetch('/api/status');
+    const res = await fetch('/api/status');
     const data = await res.json();
 
     if (data.llm_ready) {
-      statusDot.className  = 'status-dot ready';
+      statusDot.className = 'status-dot ready';
       statusText.textContent = 'ONLINE';
       sendBtn.disabled = false;
     } else {
-      statusDot.className  = 'status-dot loading';
+      statusDot.className = 'status-dot loading';
       statusText.textContent = 'Loading LLM…';
       sendBtn.disabled = true;
     }
-
-    // Update system stats
     const s = data.system;
     updateStat('cpu-value', `${s.cpu_percent}%`, 'cpu-bar', s.cpu_percent);
     updateStat('ram-value', `${s.ram_used_gb}GB`, 'ram-bar', s.ram_percent);
@@ -164,7 +133,7 @@ async function pollStatus() {
       document.getElementById('battery-bar').style.background = 'var(--clr-accent)';
     }
   } catch (_) {
-    statusDot.className  = 'status-dot error';
+    statusDot.className = 'status-dot error';
     statusText.textContent = 'OFFLINE';
   }
 }
@@ -173,16 +142,14 @@ function updateStat(valueId, valueText, barId, percent) {
   document.getElementById(valueId).textContent = valueText;
   const bar = document.getElementById(barId);
   bar.style.width = `${Math.min(percent, 100)}%`;
-  // Color code: green < 60, yellow < 85, red >= 85
   if (percent >= 85) bar.style.background = 'linear-gradient(90deg, #cc3300, var(--clr-red))';
   else if (percent >= 60) bar.style.background = 'linear-gradient(90deg, #cc8800, var(--clr-gold))';
   else bar.style.background = 'linear-gradient(90deg, var(--clr-accent2), var(--clr-accent))';
 }
 
-// ─── History ─────────────────────────────────────────────────
 async function loadHistory() {
   try {
-    const res  = await fetch('/api/history');
+    const res = await fetch('/api/history');
     const data = await res.json();
     if (data.history && data.history.length > 0) {
       clearWelcome();
@@ -190,10 +157,9 @@ async function loadHistory() {
         appendMessage(msg.role === 'user' ? 'user' : 'jarvis', msg.content, false);
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
-// ─── Messaging ───────────────────────────────────────────────
 function clearWelcome() {
   const w = chatMessages.querySelector('.welcome-msg');
   if (w) w.remove();
@@ -259,8 +225,6 @@ function removeThinking() {
 function scrollToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
-
-// ─── Send message (with SSE streaming) ───────────────────────
 async function sendMessage(text) {
   if (!text.trim() || isStreaming) return;
 
@@ -270,29 +234,37 @@ async function sendMessage(text) {
   appendMessage('user', msg);
 
   isStreaming = true;
-  sendBtn.disabled = true;
-  setWaveformState('thinking');
 
+  // Transform send button to Stop button
+  const sendIcon = document.getElementById('send-icon');
+  if (sendIcon) {
+    sendIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" stroke-width="2"/>';
+    sendIcon.style.color = '#ff3b5c';
+  }
+
+  setWaveformState('thinking');
   const thinking = appendThinking();
+
+  abortController = new AbortController();
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg, stream: true }),
+      signal: abortController.signal
     });
 
     if (!res.ok) {
       removeThinking();
       const err = await res.json().catch(() => ({ detail: 'Server error' }));
-      appendMessage('jarvis', `⚠️ Error: ${err.detail || 'Something went wrong.'}`);
+      appendMessage('jarvis', `Error: ${err.detail || 'Something went wrong.'}`);
       return;
     }
 
     removeThinking();
     setWaveformState('speaking');
 
-    // Create the JARVIS bubble for streaming
     messageCount++;
     msgCount.textContent = messageCount;
     const msgDiv = document.createElement('div');
@@ -306,8 +278,6 @@ async function sendMessage(text) {
     msgDiv.appendChild(lbl);
     msgDiv.appendChild(bubble);
     chatMessages.appendChild(msgDiv);
-
-    // Read SSE stream — accumulate raw text, show plain while streaming
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -325,7 +295,6 @@ async function sendMessage(text) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.slice(6).trim();
         if (payload === '[DONE]') {
-          // Stream complete — now render full markdown
           bubble.classList.remove('typing-cursor');
           bubble.innerHTML = renderMarkdown(rawText);
           scrollToBottom();
@@ -334,30 +303,35 @@ async function sendMessage(text) {
         try {
           const { token } = JSON.parse(payload);
           rawText += token;
-          // Show plain text while still streaming (fast, no re-parsing)
           bubble.textContent = rawText;
           scrollToBottom();
-        } catch (_) {}
+        } catch (_) { }
       }
     }
-
-    // Ensure markdown is rendered even if [DONE] wasn't sent
     bubble.classList.remove('typing-cursor');
     if (rawText) bubble.innerHTML = renderMarkdown(rawText);
 
   } catch (err) {
     removeThinking();
-    appendMessage('jarvis', `⚠️ Network error: ${err.message}`);
+    if (err.name === 'AbortError') {
+      appendMessage('jarvis', `*Generation stopped by user.*`);
+    } else {
+      appendMessage('jarvis', `Network error: ${err.message}`);
+    }
   } finally {
     isStreaming = false;
-    sendBtn.disabled = false;
+    abortController = null;
+    const sendIcon = document.getElementById('send-icon');
+    if (sendIcon) {
+      sendIcon.innerHTML = '<line x1="22" y1="2" x2="11" y2="13" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><polygon points="22 2 15 22 11 13 2 9 22 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>';
+      sendIcon.style.color = 'currentColor';
+    }
+
     setWaveformState('idle');
-    // Refresh memory + sessions after each conversation turn
     setTimeout(() => { loadMemoryPanel(); loadSessionsPanel(); }, 1000);
   }
 }
 
-// ─── Voice recording ─────────────────────────────────────────
 async function startRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -374,7 +348,7 @@ async function startRecording() {
     isRecording = true;
     voiceBtn.classList.add('recording');
     setWaveformState('recording');
-    inputHint.textContent = '🔴 Recording … click mic again to stop';
+    inputHint.textContent = 'Recording … click mic again to stop';
   } catch (err) {
     alert('Microphone access denied. Please allow mic permission in your browser.');
   }
@@ -387,7 +361,7 @@ function stopRecording() {
   isRecording = false;
   voiceBtn.classList.remove('recording');
   setWaveformState('thinking');
-  inputHint.textContent = '🔄 Transcribing …';
+  inputHint.textContent = 'Transcribing …';
 }
 
 async function processVoice() {
@@ -408,21 +382,38 @@ async function processVoice() {
 
     if (transcript) {
       userInput.value = transcript;
-      inputHint.textContent = `✅ Heard: "${transcript}" — press Enter or Send`;
-      // Auto-send after a short delay
+      inputHint.textContent = `Heard: "${transcript}" — press Enter or Send`;
       setTimeout(() => sendMessage(transcript), 800);
     } else {
-      inputHint.textContent = '⚠️ Couldn\'t hear anything clearly. Try speaking closer to the mic.';
+      inputHint.textContent = 'Couldn\'t hear anything clearly. Try speaking closer to the mic.';
     }
   } catch (err) {
-    inputHint.textContent = `⚠️ Voice error: ${err.message}`;
+    inputHint.textContent = `Voice error: ${err.message}`;
   } finally {
     setWaveformState('idle');
     setTimeout(() => { inputHint.textContent = 'Press Enter to send · Shift+Enter for newline · or click 🎤 to speak'; }, 4000);
   }
 }
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const leftPanel = document.getElementById('left-panel');
+const mobileBackdrop = document.getElementById('mobile-backdrop');
 
-// ─── Event Listeners ─────────────────────────────────────────
+function toggleMobileMenu() {
+  const isLeftOpen = !leftPanel.classList.contains('-translate-x-full');
+
+  if (isLeftOpen) {
+    leftPanel.classList.add('-translate-x-full');
+    mobileBackdrop.classList.add('opacity-0');
+    setTimeout(() => mobileBackdrop.classList.add('hidden'), 300);
+  } else {
+    leftPanel.classList.remove('-translate-x-full');
+    mobileBackdrop.classList.remove('hidden');
+    setTimeout(() => mobileBackdrop.classList.remove('opacity-0'), 10);
+  }
+}
+
+if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+if (mobileBackdrop) mobileBackdrop.addEventListener('click', toggleMobileMenu);
 
 // Send on Enter (Shift+Enter = newline)
 userInput.addEventListener('keydown', e => {
@@ -439,7 +430,16 @@ userInput.addEventListener('input', () => {
 });
 
 // Send button
-sendBtn.addEventListener('click', () => sendMessage(userInput.value));
+sendBtn.addEventListener('click', () => {
+  if (isStreaming) {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+  } else {
+    sendMessage(userInput.value);
+  }
+});
 
 // Voice button toggle
 voiceBtn.addEventListener('click', () => {
@@ -469,106 +469,10 @@ document.querySelectorAll('.quick-btn').forEach(btn => {
     if (prompt) sendMessage(prompt);
   });
 });
-
-// ─── Memory Panel ─────────────────────────────────────────────
-async function loadMemoryPanel() {
-  const panel = document.getElementById('memory-panel');
-  if (!panel) return;
-  try {
-    const res  = await fetch('/api/memory');
-    if (!res.ok) throw new Error('not ready');
-    const mem  = await res.json();
-    renderMemoryPanel(panel, mem);
-  } catch (_) {
-    panel.innerHTML = '<div class="memory-empty">Memory unavailable while loading…</div>';
-  }
-}
-
-function renderMemoryPanel(panel, mem) {
-  const rows = [];
-
-  const addRow = (key, val) => {
-    if (!val) return;
-    if (Array.isArray(val) && val.length === 0) return;
-    rows.push({ key, val });
-  };
-
-  addRow('Name',     mem.name);
-  addRow('Role',     mem.role);
-  addRow('Location', mem.location);
-  addRow('Language', mem.preferred_language);
-  addRow('Projects', mem.projects);
-  addRow('Interests',mem.interests);
-  addRow('Facts',    mem.facts);
-
-  if (rows.length === 0) {
-    panel.innerHTML = '<div class="memory-empty">No facts learned yet. Chat with JARVIS to build your profile.</div>';
-    return;
-  }
-
-  panel.innerHTML = rows.map(({ key, val }) => {
-    const isArr = Array.isArray(val);
-    const valHtml = isArr
-      ? `<div class="memory-tags">${val.slice(-8).map(t => `<span class="memory-tag">${escHtml(t)}</span>`).join('')}</div>`
-      : `<div class="memory-val">${escHtml(String(val))}</div>`;
-    return `<div class="memory-row"><div class="memory-key">${escHtml(key)}</div>${valHtml}</div>`;
-  }).join('');
-}
-
-// ─── Sessions Panel ───────────────────────────────────────────
-async function loadSessionsPanel() {
-  const list = document.getElementById('sessions-list');
-  const countEl = document.getElementById('session-count');
-  if (!list) return;
-  try {
-    const res  = await fetch('/api/history/all');
-    if (!res.ok) throw new Error('not ready');
-    const data = await res.json();
-    const sessions = (data.sessions || []).reverse(); // newest first
-
-    if (countEl) countEl.textContent = sessions.length || '0';
-
-    if (sessions.length === 0) {
-      list.innerHTML = '<div class="memory-empty">No past sessions yet.</div>';
-      return;
-    }
-
-    list.innerHTML = sessions.map(s => {
-      const dt  = s.timestamp ? new Date(s.timestamp).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-      const pre = s.preview ? escHtml(s.preview.slice(0, 60)) : '(empty)';
-      return `
-        <div class="session-card" title="${escHtml(s.preview || '')}">
-          <div class="session-date">${dt}</div>
-          <div class="session-preview">${pre}</div>
-          <div class="session-count-badge">${s.message_count} message${s.message_count !== 1 ? 's' : ''}</div>
-        </div>`;
-    }).join('');
-  } catch (_) {
-    if (list) list.innerHTML = '<div class="memory-empty">Sessions unavailable while loading…</div>';
-  }
-}
-
-// ─── Refresh memory after each JARVIS reply ───────────────────
-// Patch sendMessage to refresh memory panel after completion
-const _origSendMessage = sendMessage;
-window._refreshMemoryAfterReply = function() {
-  setTimeout(() => { loadMemoryPanel(); loadSessionsPanel(); }, 800);
-};
-
-// Refresh button
-const refreshMemBtn = document.getElementById('refresh-memory-btn');
-if (refreshMemBtn) {
-  refreshMemBtn.addEventListener('click', () => {
-    loadMemoryPanel();
-    loadSessionsPanel();
-  });
-}
-
-// ─── Utility ─────────────────────────────────────────────────
-window.copyCode = function(btn) {
+window.copyCode = function (btn) {
   const container = btn.closest('.code-container');
   const code = container.querySelector('code').innerText;
-  
+
   navigator.clipboard.writeText(code).then(() => {
     const originalContent = btn.innerHTML;
     btn.innerHTML = `

@@ -60,7 +60,7 @@ def main():
         host=SERVER_HOST,
         port=SERVER_PORT,
         reload=False,
-        log_level="warning",  # Keep logs clean
+        log_level="warning", 
     )
 
 

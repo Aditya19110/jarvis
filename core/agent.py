@@ -40,18 +40,13 @@ _APP_MAP = {
     'zoom':          'zoom.us',
 }
 
-
-# ══════════════════════════════════════════════════════════════
-#  TOOLS
-# ══════════════════════════════════════════════════════════════
-
 def _open_app(name: str) -> str:
     """Launch a macOS app by name."""
     real = _APP_MAP.get(name.strip().lower(), name.strip())
     result = subprocess.run(['open', '-a', real], capture_output=True, text=True)
     if result.returncode == 0:
-        return f"✅ Launched **{real}**."
-    return f"❌ Couldn't open **{real}**. Is it installed?\n```\n{result.stderr.strip()}\n```"
+        return f"Launched **{real}**."
+    return f"Couldn't open **{real}**. Is it installed?\n```\n{result.stderr.strip()}\n```"
 
 
 def _run_shell(cmd: str) -> str:
@@ -68,7 +63,7 @@ def _run_shell(cmd: str) -> str:
     except subprocess.TimeoutExpired:
         return f"⏱ Command timed out after 15s: `{cmd}`"
     except Exception as e:
-        return f"❌ Error running `{cmd}`: {e}"
+        return f"Error running `{cmd}`: {e}"
 
 
 def _system_status() -> str:
@@ -124,11 +119,6 @@ def _recall_memory() -> str:
     ctx = memory_to_context(mem)
     return f"Here's what I know about you:\n\n{ctx}"
 
-
-# ══════════════════════════════════════════════════════════════
-#  AGENT
-# ══════════════════════════════════════════════════════════════
-
 class JarvisAgent:
     """
     The reasoning layer between user input and the LLM.
@@ -147,7 +137,6 @@ class JarvisAgent:
         """
         if intent == 'llm':
             return None
-
         if intent == 'open_vscode':
             return _open_app('Visual Studio Code')
         if intent == 'open_terminal':
@@ -182,10 +171,9 @@ class JarvisAgent:
         if intent == 'recall_memory':
             return _recall_memory()
         if intent == 'remember':
-            # Let LLM handle this naturally — it'll get saved to memory
             return None
 
-        return None  # Unknown intent → LLM
+        return None  
 
     def stream(self, user_input: str) -> Generator[str, None, None]:
         """
@@ -196,15 +184,13 @@ class JarvisAgent:
         from core.router import route
         intent, match = route(user_input)
 
-        console.print(f"[dim]🧭 Intent: [cyan]{intent}[/]  text=[yellow]{user_input[:50]}[/][/]")
+        console.print(f"[dim]Intent: [cyan]{intent}[/]  text=[yellow]{user_input[:50]}[/][/]")
 
         tool_result = self._dispatch(intent, match, user_input)
 
         if tool_result is not None:
-            # Tool executed — yield result directly
             yield tool_result
         else:
-            # Route to LLM
             yield from self.llm.chat_stream(user_input)
 
     def chat(self, user_input: str) -> str:
@@ -216,10 +202,7 @@ class JarvisAgent:
             return tool_result
         return self.llm.chat(user_input)
 
-
-# ── Singleton ─────────────────────────────────────────────────
 _agent: JarvisAgent | None = None
-
 
 def get_agent() -> JarvisAgent:
     global _agent

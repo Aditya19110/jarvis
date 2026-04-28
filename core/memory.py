@@ -20,8 +20,6 @@ from rich.console import Console
 
 console = Console()
 
-
-# ─── Paths ────────────────────────────────────────────────────
 def _data_dir() -> Path:
     from config import BASE_DIR
     d = Path(BASE_DIR) / "data"
@@ -35,11 +33,6 @@ def _history_path() -> Path:
 
 def _memory_path() -> Path:
     return _data_dir() / "user_memory.json"
-
-
-# ══════════════════════════════════════════════════════════════
-# CHAT HISTORY  —  Save & Load full conversation logs
-# ══════════════════════════════════════════════════════════════
 
 def save_conversation(messages: list[dict], session_id: str | None = None) -> None:
     """
@@ -118,11 +111,6 @@ def get_all_sessions_summary() -> list[dict]:
         ]
     except Exception:
         return []
-
-
-# ══════════════════════════════════════════════════════════════
-# USER MEMORY  —  Long-term facts about the user
-# ══════════════════════════════════════════════════════════════
 
 DEFAULT_MEMORY = {
     "name": "Aditya Kulkarni",
@@ -204,11 +192,6 @@ def memory_to_context(memory: dict) -> str:
 
     return "\n".join(lines)
 
-
-# ══════════════════════════════════════════════════════════════
-# MEMORY EXTRACTOR  —  Pull facts from a conversation turn
-# ══════════════════════════════════════════════════════════════
-
 _EXTRACT_PROMPT = """You are a data extractor. Your task is to extract NEW factual information about the user from their message.
 
 RULES:
@@ -230,7 +213,6 @@ User message: "{message}"
 Return ONLY the JSON object. If nothing new is found, return {{}}.
 """
 
-
 def extract_facts_from_message(user_message: str, model=None, tokenizer=None) -> dict:
     """
     Use the LLM to extract facts about the user from their message.
@@ -244,9 +226,7 @@ def extract_facts_from_message(user_message: str, model=None, tokenizer=None) ->
         from mlx_lm.sample_utils import make_sampler  # type: ignore
 
         prompt_text = _EXTRACT_PROMPT.format(message=user_message[:500])
-
-        # Use a simple prompt (no chat template — just raw extraction)
-        sampler = make_sampler(temp=0.0)  # Greedy for JSON extraction
+        sampler = make_sampler(temp=0.0) 
         raw = generate(
             model, tokenizer,
             prompt=prompt_text,
@@ -254,9 +234,7 @@ def extract_facts_from_message(user_message: str, model=None, tokenizer=None) ->
             sampler=sampler,
         )
 
-        # Extract JSON from response
         raw = raw.strip()
-        # Find JSON object in response
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
             data = json.loads(match.group())

@@ -31,37 +31,29 @@ app = FastAPI(title="JARVIS API", version="1.0.0")
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ─── Models ───────────────────────────────────────────────
-
-
 class ChatRequest(BaseModel):
     message: str
     stream: bool = True
 
 
 class VoiceRequest(BaseModel):
-    audio_b64: str  # Base64-encoded WAV audio bytes
+    audio_b64: str 
 
 
 class ResetRequest(BaseModel):
     pass
 
-
-# ─── Startup — load LLM once ──────────────────────────────
-
 _llm = None
 _llm_ready = False
 _agent = None
-_whisper = None  # Loaded on first voice request
+_whisper = None 
 
 
 @app.on_event("startup")
 async def startup_event():
     global _llm, _llm_ready
-    # Load in background thread so the server stays responsive
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _load_llm)
-
 
 def _load_llm():
     global _llm, _llm_ready, _agent
@@ -71,15 +63,10 @@ def _load_llm():
     _agent = JarvisAgent(_llm)
     _llm_ready = True
 
-
-# ─── Routes ───────────────────────────────────────────────
-
-
 @app.get("/", response_class=HTMLResponse)
 async def root():
     index = STATIC_DIR / "index.html"
     return HTMLResponse(content=index.read_text(), status_code=200)
-
 
 @app.get("/api/status")
 async def status():
@@ -90,7 +77,6 @@ async def status():
         "model": "mlx-community/Phi-3-mini-4k-instruct-4bit",
         "system": info,
     }
-
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
@@ -141,8 +127,6 @@ async def voice_to_text(req: VoiceRequest):
     try:
         import whisper
         import subprocess
-
-        # Load Whisper once and cache it
         if _whisper is None:
             from config import WHISPER_MODEL
             _whisper = whisper.load_model(WHISPER_MODEL)
@@ -151,18 +135,16 @@ async def voice_to_text(req: VoiceRequest):
         if len(audio_bytes) < 1000:
             return {"transcript": "", "error": "Audio too short — nothing recorded."}
 
-        # Write raw webm bytes to a temp file
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
             f.write(audio_bytes)
             tmp_webm = f.name
 
-        # Convert webm → wav 16kHz mono via ffmpeg (Whisper's sweet spot)
         tmp_wav = tmp_webm.replace(".webm", ".wav")
         ffmpeg_result = subprocess.run(
             [
                 "ffmpeg", "-y",
                 "-i", tmp_webm,
-                "-ar", "16000",   # 16kHz sample rate
+                "-ar", "16000",   
                 "-ac", "1",       # mono
                 "-f", "wav",
                 tmp_wav,
@@ -172,7 +154,6 @@ async def voice_to_text(req: VoiceRequest):
         )
 
         if ffmpeg_result.returncode != 0:
-            # ffmpeg failed — try passing webm directly to Whisper as fallback
             wav_to_use = tmp_webm
         else:
             wav_to_use = tmp_wav
@@ -184,14 +165,13 @@ async def voice_to_text(req: VoiceRequest):
                 wav_to_use,
                 fp16=False,
                 language="en",
-                temperature=0.0,          # Greedy decode = more accurate
+                temperature=0.0,
                 condition_on_previous_text=False,
             )
         )
 
         transcript = result["text"].strip()
 
-        # Strip common Whisper hallucinations on silence
         _hallucinations = {
             "thank you.", "thanks.", "thank you for watching.",
             "you", ".", "", "bye.", "bye-bye.", "see you.",
@@ -265,8 +245,6 @@ async def clear_memory():
     save_memory(mem)
     return {"status": "ok"}
 
-
-# ─── Entry point ──────────────────────────────────────────
 
 if __name__ == "__main__":
     from config import SERVER_HOST, SERVER_PORT

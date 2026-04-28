@@ -3,12 +3,10 @@ core/stt.py — Speech-to-Text via Whisper
 Records audio from the microphone and transcribes it locally.
 """
 from __future__ import annotations
-
 import io
 import threading
 import time
 import wave
-
 import numpy as np
 import sounddevice as sd
 import whisper
@@ -23,14 +21,10 @@ def _get_whisper():
     global _whisper_model
     if _whisper_model is None:
         from config import WHISPER_MODEL
-        console.print(f"[cyan]🎙️ Loading Whisper [{WHISPER_MODEL}] …[/]")
+        console.print(f"Loading Whisper [{WHISPER_MODEL}] …[/]")
         _whisper_model = whisper.load_model(WHISPER_MODEL)
-        console.print("[green]✅ Whisper ready[/]")
+        console.print("Whisper ready")
     return _whisper_model
-
-
-# ─── Recording ────────────────────────────────────────────
-
 
 def record_audio(seconds: int | None = None) -> np.ndarray:
     """
@@ -42,7 +36,7 @@ def record_audio(seconds: int | None = None) -> np.ndarray:
     duration = seconds or AUDIO_RECORD_SECONDS
     sample_rate = AUDIO_SAMPLE_RATE
 
-    console.print(f"[bold yellow]🎤 Listening for {duration}s …[/]")
+    console.print(f"Listening for {duration}s …")
 
     audio = sd.rec(
         int(duration * sample_rate),
@@ -50,7 +44,7 @@ def record_audio(seconds: int | None = None) -> np.ndarray:
         channels=1,
         dtype="float32",
     )
-    sd.wait()  # Block until done
+    sd.wait()
     return audio.flatten()
 
 
@@ -92,10 +86,6 @@ def record_until_silence(
 
     return np.concatenate(frames)
 
-
-# ─── Transcription ────────────────────────────────────────
-
-
 def transcribe(audio: np.ndarray) -> str:
     """Transcribe a numpy audio array using Whisper."""
     model = _get_whisper()
@@ -103,7 +93,6 @@ def transcribe(audio: np.ndarray) -> str:
     text = result["text"].strip()
     console.print(f"[bold magenta]👤 You said:[/] {text}")
     return text
-
 
 def listen_and_transcribe(auto_silence: bool = True) -> str:
     """
@@ -115,9 +104,6 @@ def listen_and_transcribe(auto_silence: bool = True) -> str:
     else:
         audio = record_audio()
     return transcribe(audio)
-
-
-# ─── Quick test ────────────────────────────────────────────
 
 if __name__ == "__main__":
     text = listen_and_transcribe()

@@ -1,226 +1,288 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full antialiased">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JARVIS — Just A Rather Very Intelligent System</title>
-  <meta name="description" content="A fully local, offline AI assistant powered by Phi-3-mini running on Apple Silicon." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>JARVIS — AI Assistant</title>
+  <meta name="description" content="Offline AI Assistant on Apple Silicon." />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap"
+    rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            jarvis: {
+              bg: '#03070f',
+              panel: 'rgba(6, 18, 40, 0.82)',
+              border: 'rgba(0, 180, 255, 0.25)',
+              accent: '#00b4ff',
+              gold: '#f5a623',
+              green: '#00ff88',
+              red: '#ff3b5c',
+              text: '#c8e0f8',
+              dim: '#5a7a9a',
+            }
+          },
+          fontFamily: {
+            hud: ['Orbitron', 'monospace'],
+            body: ['Inter', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace'],
+          },
+          backdropBlur: {
+            xl: '24px',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
-<body>
-  <!-- ── Ambient Background ── -->
+
+<body
+  class="bg-jarvis-bg text-jarvis-text font-body h-full overflow-hidden selection:bg-jarvis-accent selection:text-white">
   <div class="bg-orbs" aria-hidden="true">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
   </div>
-
-  <!-- ── Grid overlay ── -->
   <div class="grid-overlay" aria-hidden="true"></div>
-
-  <!-- ── Scanline effect ── -->
   <div class="scanlines" aria-hidden="true"></div>
+  <div class="relative z-10 flex flex-col h-full h-[100dvh]">
+    <header
+      class="flex items-center justify-between px-4 py-3 bg-[#03070f]/90 backdrop-blur-xl border-b border-jarvis-border flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <button id="mobile-menu-btn"
+          class="lg:hidden p-2 text-jarvis-accent hover:bg-jarvis-accent/10 rounded-md transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
 
-  <div class="app-shell">
-
-    <!-- ════ HEADER ════ -->
-    <header class="header">
-      <div class="header-left">
-        <div class="logo-ring" aria-hidden="true">
+        <div class="logo-ring w-10 h-10 lg:w-12 lg:h-12 hidden sm:block" aria-hidden="true">
           <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="40" r="36" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3" class="ring-outer"/>
-            <circle cx="40" cy="40" r="26" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-            <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.9" class="ring-core"/>
-            <text x="40" y="45" text-anchor="middle" fill="white" font-size="10" font-family="Orbitron" font-weight="700">J</text>
+            <circle cx="40" cy="40" r="36" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3"
+              class="ring-outer text-jarvis-accent" />
+            <circle cx="40" cy="40" r="26" stroke="currentColor" stroke-width="1" opacity="0.5"
+              class="text-jarvis-accent" />
+            <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.9" class="ring-core text-jarvis-accent" />
+            <text x="40" y="45" text-anchor="middle" fill="white" font-size="10" font-family="Orbitron"
+              font-weight="700">J</text>
           </svg>
         </div>
-        <div class="header-title">
-          <h1>JARVIS</h1>
-          <p class="subtitle">Just A Rather Very Intelligent System</p>
+        <div>
+          <h1
+            class="font-hud font-black text-lg lg:text-xl tracking-widest bg-gradient-to-br from-[#00b4ff] to-[#00d4ff] bg-clip-text text-transparent">
+            JARVIS</h1>
+          <p class="font-hud text-[8px] lg:text-[10px] tracking-widest text-jarvis-dim uppercase hidden sm:block">Just A
+            Rather Very Intelligent System</p>
         </div>
       </div>
-      <div class="header-right">
-        <div class="status-badge" id="status-badge">
-          <span class="status-dot" id="status-dot"></span>
-          <span class="status-text" id="status-text">Initializing…</span>
+
+      <div class="flex items-center gap-2 lg:gap-3">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 bg-jarvis-accent/10 border border-jarvis-border rounded-full font-hud text-[10px] tracking-widest text-white shadow-[0_0_15px_rgba(0,180,255,0.2)]">
+          <span class="w-2 h-2 rounded-full bg-jarvis-dim transition-colors duration-300" id="status-dot"></span>
+          <span id="status-text" class="hidden sm:inline">Initializing…</span>
         </div>
-        <button class="icon-btn" id="reset-btn" title="Clear conversation" aria-label="Clear conversation">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+        <button id="reset-btn"
+          class="p-2 border border-jarvis-border rounded bg-jarvis-accent/5 text-jarvis-accent hover:bg-jarvis-accent/20 hover:shadow-[0_0_15px_rgba(0,180,255,0.4)] active:scale-95 transition-all"
+          title="Clear conversation">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 .49-4.5" />
           </svg>
         </button>
       </div>
     </header>
+    <main class="flex-1 flex overflow-hidden relative">
+      <div id="mobile-backdrop"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity opacity-0"></div>
+      <aside id="left-panel"
+        class="absolute lg:static inset-y-0 left-0 w-64 lg:w-60 bg-jarvis-panel/95 lg:bg-jarvis-panel border-r border-jarvis-border backdrop-blur-xl p-4 flex flex-col gap-4 overflow-y-auto transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50 lg:z-auto">
 
-    <!-- ════ MAIN CONTENT ════ -->
-    <main class="main-content">
-
-      <!-- ── Left Panel: System Stats ── -->
-      <aside class="side-panel left-panel" aria-label="System statistics">
-        <div class="panel-header">
-          <span class="panel-icon">⚡</span>
-          <span>SYSTEM STATUS</span>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-card" id="stat-cpu">
-            <div class="stat-label">CPU</div>
-            <div class="stat-value" id="cpu-value">–%</div>
-            <div class="stat-bar"><div class="stat-bar-fill" id="cpu-bar"></div></div>
-          </div>
-          <div class="stat-card" id="stat-ram">
-            <div class="stat-label">RAM</div>
-            <div class="stat-value" id="ram-value">– GB</div>
-            <div class="stat-bar"><div class="stat-bar-fill" id="ram-bar"></div></div>
-          </div>
-          <div class="stat-card" id="stat-disk">
-            <div class="stat-label">DISK</div>
-            <div class="stat-value" id="disk-value">–%</div>
-            <div class="stat-bar"><div class="stat-bar-fill" id="disk-bar"></div></div>
-          </div>
-          <div class="stat-card" id="stat-battery">
-            <div class="stat-label">BATTERY</div>
-            <div class="stat-value" id="battery-value">–%</div>
-            <div class="stat-bar"><div class="stat-bar-fill" id="battery-bar"></div></div>
-          </div>
+        <div
+          class="flex items-center gap-2 font-hud text-[10px] font-bold tracking-widest text-jarvis-accent uppercase">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <span>System Status</span>
         </div>
 
-        <div class="panel-divider"></div>
-
-        <div class="panel-header">
-          <span class="panel-icon">🧠</span>
-          <span>MODEL</span>
-        </div>
-        <div class="model-info">
-          <div class="model-name">Phi-3-mini-4bit</div>
-          <div class="model-detail">MLX · Apple Silicon</div>
-          <div class="model-detail">~2GB RAM · Local</div>
-        </div>
-
-        <div class="panel-divider"></div>
-
-        <div class="panel-header">
-          <span class="panel-icon">📡</span>
-          <span>UPTIME</span>
-        </div>
-        <div class="uptime-display" id="uptime-display">00:00:00</div>
-      </aside>
-
-      <!-- ── Center: Chat ── -->
-      <section class="chat-section" aria-label="Chat with JARVIS">
-        <!-- Waveform visualizer -->
-        <div class="waveform-container" id="waveform-container" aria-hidden="true">
-          <div class="waveform" id="waveform">
-            <div class="waveform-ring ring-1"></div>
-            <div class="waveform-ring ring-2"></div>
-            <div class="waveform-ring ring-3"></div>
-            <div class="waveform-bars" id="waveform-bars"></div>
-          </div>
-          <div class="waveform-label" id="waveform-label">STANDBY</div>
-        </div>
-
-        <!-- Chat messages -->
-        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
-          <div class="welcome-msg">
-            <div class="welcome-icon">🤖</div>
-            <h2>Good to see you, Sir.</h2>
-            <p>I am JARVIS, your personal AI assistant. Running fully offline on your Apple Silicon Mac. How may I assist you today?</p>
-          </div>
-        </div>
-
-        <!-- Input area -->
-        <div class="chat-input-area">
-          <div class="input-row">
-            <div class="input-wrapper">
-              <textarea
-                id="user-input"
-                placeholder="Ask JARVIS anything…"
-                rows="1"
-                aria-label="Type your message"
-              ></textarea>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-black/30 border border-jarvis-border/50 rounded-lg p-2.5 flex flex-col justify-between">
+            <div class="font-hud text-[9px] text-jarvis-dim">CPU</div>
+            <div id="cpu-value" class="font-mono text-sm text-white my-1">–%</div>
+            <div class="h-1 w-full bg-black/50 rounded overflow-hidden">
+              <div id="cpu-bar"
+                class="h-full bg-gradient-to-r from-jarvis-accent to-[#0066ff] transition-all duration-500 w-0"></div>
             </div>
-            <button class="voice-btn" id="voice-btn" title="Voice input" aria-label="Start voice recording">
-              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            </button>
-            <button class="send-btn" id="send-btn" title="Send message" aria-label="Send message">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
           </div>
-          <div class="input-hint" id="input-hint">Press Enter to send · Shift+Enter for newline · or click 🎤 to speak</div>
+          <div class="bg-black/30 border border-jarvis-border/50 rounded-lg p-2.5 flex flex-col justify-between">
+            <div class="font-hud text-[9px] text-jarvis-dim">RAM</div>
+            <div id="ram-value" class="font-mono text-sm text-white my-1">– GB</div>
+            <div class="h-1 w-full bg-black/50 rounded overflow-hidden">
+              <div id="ram-bar"
+                class="h-full bg-gradient-to-r from-jarvis-accent to-[#0066ff] transition-all duration-500 w-0"></div>
+            </div>
+          </div>
+          <div class="bg-black/30 border border-jarvis-border/50 rounded-lg p-2.5 flex flex-col justify-between">
+            <div class="font-hud text-[9px] text-jarvis-dim">DISK</div>
+            <div id="disk-value" class="font-mono text-sm text-white my-1">–%</div>
+            <div class="h-1 w-full bg-black/50 rounded overflow-hidden">
+              <div id="disk-bar"
+                class="h-full bg-gradient-to-r from-jarvis-accent to-[#0066ff] transition-all duration-500 w-0"></div>
+            </div>
+          </div>
+          <div class="bg-black/30 border border-jarvis-border/50 rounded-lg p-2.5 flex flex-col justify-between">
+            <div class="font-hud text-[9px] text-jarvis-dim">BATTERY</div>
+            <div id="battery-value" class="font-mono text-sm text-white my-1">–%</div>
+            <div class="h-1 w-full bg-black/50 rounded overflow-hidden">
+              <div id="battery-bar"
+                class="h-full bg-gradient-to-r from-jarvis-accent to-[#0066ff] transition-all duration-500 w-0"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="h-px w-full bg-jarvis-border/50 my-2"></div>
+
+        <div
+          class="flex items-center gap-2 font-hud text-[10px] font-bold tracking-widest text-jarvis-accent uppercase">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+            </path>
+          </svg>
+          <span>Model</span>
+        </div>
+        <div class="text-[11px] text-jarvis-text leading-relaxed">
+          <div class="text-white font-medium mb-1">Phi-3-mini-4bit</div>
+          <div class="text-jarvis-dim">MLX · Apple Silicon</div>
+          <div class="text-jarvis-dim">~2GB RAM · Local</div>
+        </div>
+        <div class="h-px w-full bg-jarvis-border/50 my-2"></div>
+        <div
+          class="flex items-center gap-2 font-hud text-[10px] font-bold tracking-widest text-jarvis-accent uppercase">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Uptime</span>
+        </div>
+        <div id="uptime-display" class="font-mono text-xl text-white tracking-wider mb-2">00:00:00</div>
+
+        <div
+          class="flex items-center gap-2 font-hud text-[10px] font-bold tracking-widest text-jarvis-accent uppercase">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+            </path>
+          </svg>
+          <span>Messages</span>
+        </div>
+        <div id="msg-count" class="font-mono text-xl text-white tracking-wider">0</div>
+
+        <div class="h-px w-full bg-jarvis-border/50 my-2"></div>
+        <div
+          class="flex items-center gap-2 font-hud text-[10px] font-bold tracking-widest text-jarvis-accent uppercase">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <span>Quick Prompts</span>
+        </div>
+        <div class="flex flex-col gap-2 pb-4">
+          <button
+            class="quick-btn text-left px-3 py-2 text-xs text-jarvis-text bg-black/30 border border-jarvis-border/30 rounded hover:bg-jarvis-accent/20 hover:border-jarvis-accent transition-all"
+            data-prompt="What's my system status?">System Status</button>
+          <button
+            class="quick-btn text-left px-3 py-2 text-xs text-jarvis-text bg-black/30 border border-jarvis-border/30 rounded hover:bg-jarvis-accent/20 hover:border-jarvis-accent transition-all"
+            data-prompt="Write a short Python script to fetch a URL.">Python Code</button>
+          <button
+            class="quick-btn text-left px-3 py-2 text-xs text-jarvis-text bg-black/30 border border-jarvis-border/30 rounded hover:bg-jarvis-accent/20 hover:border-jarvis-accent transition-all"
+            data-prompt="What do you remember about me?">My Memory</button>
+        </div>
+      </aside>
+      <section class="flex-1 flex flex-col relative min-w-0">
+        <div
+          class="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-10 opacity-70">
+          <div id="waveform" class="relative w-16 h-16 flex items-center justify-center">
+            <div class="absolute inset-0 rounded-full border border-jarvis-accent/30 scale-100 transition-transform">
+            </div>
+            <div class="absolute inset-2 rounded-full border border-jarvis-accent/50 scale-100 transition-transform">
+            </div>
+            <div id="waveform-bars" class="flex gap-1 items-center h-8"></div>
+          </div>
+          <div id="waveform-label" class="font-hud text-[8px] tracking-widest text-jarvis-accent mt-2">STANDBY</div>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 scroll-smooth pb-32">
+          <div class="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto opacity-80"
+            id="welcome-msg">
+            <div class="mb-6 animate-pulse logo-ring w-16 h-16 mx-auto text-jarvis-accent" aria-hidden="true">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="40" cy="40" r="36" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3"
+                  class="ring-outer text-jarvis-accent" />
+                <circle cx="40" cy="40" r="26" stroke="currentColor" stroke-width="1" opacity="0.5"
+                  class="text-jarvis-accent" />
+                <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.9" class="ring-core text-jarvis-accent" />
+              </svg>
+            </div>
+            <h2 class="text-2xl font-hud font-bold text-white mb-2">Good to see you, Sir.</h2>
+            <p class="text-sm text-jarvis-dim">I am JARVIS, your personal AI assistant. How may I assist you today?</p>
+          </div>
+        </div>
+        <div class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-[#03070f] via-[#03070f]/90 to-transparent">
+          <div
+            class="max-w-4xl mx-auto flex gap-2 items-end bg-jarvis-panel/80 backdrop-blur-md border border-jarvis-border p-2 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+            <textarea id="user-input"
+              class="flex-1 bg-transparent border-none outline-none resize-none max-h-32 text-sm lg:text-base text-white p-3 font-body placeholder-jarvis-dim"
+              rows="1" placeholder="Ask JARVIS anything…"></textarea>
+            <div class="flex gap-2 p-1">
+              <button id="voice-btn"
+                class="w-10 h-10 flex items-center justify-center rounded-xl bg-jarvis-accent/10 text-jarvis-accent hover:bg-jarvis-accent/20 active:scale-95 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" />
+                  <line x1="8" y1="23" x2="16" y2="23" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" />
+                </svg>
+              </button>
+              <button id="send-btn"
+                class="w-10 h-10 flex items-center justify-center rounded-xl bg-jarvis-accent text-white shadow-[0_0_15px_rgba(0,180,255,0.4)] hover:bg-[#00d4ff] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                <svg id="send-icon" class="w-5 h-5 ml-0.5 transition-transform" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <line x1="22" y1="2" x2="11" y2="13" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="input-hint" class="text-center text-[10px] text-jarvis-dim mt-2 font-hud tracking-wide">Press Enter
+            to send · Shift+Enter for newline · or click mic icon to speak</div>
         </div>
       </section>
-
-      <!-- ── Right Panel: Memory + History ── -->
-      <aside class="side-panel right-panel" aria-label="Memory and history">
-
-        <!-- Conversation stats -->
-        <div class="panel-header">
-          <span class="panel-icon">💬</span>
-          <span>CONVERSATION</span>
-        </div>
-        <div class="conv-stats">
-          <div class="conv-stat">
-            <span class="conv-stat-label">Messages</span>
-            <span class="conv-stat-value" id="msg-count">0</span>
-          </div>
-          <div class="conv-stat">
-            <span class="conv-stat-label">Sessions</span>
-            <span class="conv-stat-value" id="session-count">–</span>
-          </div>
-        </div>
-
-        <div class="panel-divider"></div>
-
-        <!-- Memory panel -->
-        <div class="panel-header">
-          <span class="panel-icon">🧠</span>
-          <span>JARVIS MEMORY</span>
-          <button class="panel-refresh-btn" id="refresh-memory-btn" title="Refresh memory" aria-label="Refresh memory">↻</button>
-        </div>
-        <div class="memory-panel" id="memory-panel">
-          <div class="memory-loading">Loading memory…</div>
-        </div>
-
-        <div class="panel-divider"></div>
-
-        <!-- Past sessions -->
-        <div class="panel-header">
-          <span class="panel-icon">📚</span>
-          <span>PAST SESSIONS</span>
-        </div>
-        <div class="sessions-list" id="sessions-list">
-          <div class="memory-loading">Loading sessions…</div>
-        </div>
-
-        <div class="panel-divider"></div>
-
-        <!-- Quick prompts -->
-        <div class="panel-header">
-          <span class="panel-icon">🎯</span>
-          <span>QUICK PROMPTS</span>
-        </div>
-        <div class="quick-prompts">
-          <button class="quick-btn" data-prompt="What's my system status?">System Status</button>
-          <button class="quick-btn" data-prompt="What do you remember about me?">My Memory</button>
-          <button class="quick-btn" data-prompt="Write a short Python function to reverse a string.">Python Code</button>
-          <button class="quick-btn" data-prompt="Tell me a fun tech fact.">Tech Fact</button>
-          <button class="quick-btn" data-prompt="What can you help me with?">Your Skills</button>
-          <button class="quick-btn" data-prompt="Tell me a joke, JARVIS.">Make me laugh</button>
-        </div>
-      </aside>
-
     </main>
   </div>
 
   <script src="/static/script.js"></script>
 </body>
+
 </html>

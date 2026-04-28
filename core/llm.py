@@ -14,12 +14,10 @@ from typing import Generator
 from rich.console import Console
 
 console = Console()
-
 _STOP_STRINGS = [
     "<|end|>", "<|endoftext|>", "<|assistant|>",
     "</s>", "<|im_end|>", "<|eot_id|>",
 ]
-
 
 def _clean(text_or_obj) -> str:
     # Handle GenerationResponse objects from mlx-lm
@@ -49,8 +47,6 @@ class JarvisLLM:
         self._load_model()
         self._restore_history()
 
-    # ─── Model Loading ──────────────────────────────────────
-
     def _load_model(self):
         console.print(f"[bold cyan]⚡ JARVIS:[/] Loading model [yellow]{self.model_name}[/] …")
         t0 = time.time()
@@ -68,17 +64,13 @@ class JarvisLLM:
         except ImportError:
             self._sampler = None
 
-        console.print(f"[bold green]✅ Model ready[/] in [cyan]{time.time() - t0:.1f}s[/]")
-
-    # ─── Persistent History ─────────────────────────────────
+        console.print(f"Model ready[/] in [cyan]{time.time() - t0:.1f}s[/]")
 
     def _restore_history(self):
         """Load last session's history from disk on startup."""
         from core.memory import load_recent_history
         history = load_recent_history(max_turns=10)  # Keep context tight
         if history:
-            # Strip old assistant messages that use sycophantic patterns
-            # (keeps users clean; model won't mimic bad old style)
             _bad_openers = (
                 "hello sir", "certainly!", "of course!", "absolutely!",
                 "sure!", "great question", "i'm glad", "i am glad",
@@ -119,8 +111,6 @@ class JarvisLLM:
                 pass
         threading.Thread(target=_learn, daemon=True).start()
 
-    # ─── Prompt Building ────────────────────────────────────
-
     def _get_system_prompt(self) -> str:
         """Build system prompt with injected user memory."""
         from config import JARVIS_SYSTEM_PROMPT
@@ -159,8 +149,6 @@ class JarvisLLM:
         response = generate(self.model, self.tokenizer, prompt=prompt, **kwargs)
         return _clean(response)
 
-    # ─── Public API ─────────────────────────────────────────
-
     def chat(self, user_message: str) -> str:
         """Non-streaming: get full response, save history, learn from message."""
         messages = self._build_messages(user_message)
@@ -187,7 +175,6 @@ class JarvisLLM:
             kwargs["sampler"] = self._sampler
 
         full_response = ""
-        # Stream from MLX
         for response in stream_generate(self.model, self.tokenizer, prompt=prompt, **kwargs):
             token = _clean(response)
             if token:
@@ -209,10 +196,7 @@ class JarvisLLM:
     def history(self) -> list[dict]:
         return self._conversation_history.copy()
 
-
-# ─── Singleton ────────────────────────────────────────────────
 _jarvis_llm: JarvisLLM | None = None
-
 
 def get_llm() -> JarvisLLM:
     global _jarvis_llm
